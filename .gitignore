@@ -1,0 +1,13 @@
+# PowerShell / OS artifacts
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+bin/
+obj/
+*.user
+
+tools/
+Tools/
+
+.tools/
