@@ -58,12 +58,10 @@ function Invoke-ModRelease {
     # Step 4: Synchronize GitHub Secrets and Variables
     Write-Host "`n[Step 4/5] Synchronizing repository secrets & variables..." -ForegroundColor Cyan
     $tToken = $env:THUNDERSTORE_TOKEN ?? [Environment]::GetEnvironmentVariable("THUNDERSTORE_TOKEN", "User")
-    $hToken = $env:HEXIUM_TOKEN ?? [Environment]::GetEnvironmentVariable("HEXIUM_TOKEN", "User")
     $nKey   = $env:NEXUSMODS_API_KEY ?? $env:NEXUS_API_KEY ?? [Environment]::GetEnvironmentVariable("NEXUSMODS_API_KEY", "User")
     $cNamespace = $env:COMMUNITY_NAMESPACE ?? [Environment]::GetEnvironmentVariable("COMMUNITY_NAMESPACE", "User") ?? (Get-ModProjectProperty -ProjectDir $ProjectDir -Property "Authors")
 
     if ($tToken) { gh secret set THUNDERSTORE_TOKEN --body "$tToken" 2>$null }
-    if ($hToken) { gh secret set HEXIUM_TOKEN --body "$hToken" 2>$null }
     if ($nKey)   { gh secret set NEXUSMODS_API_KEY --body "$nKey" 2>$null }
     if ($cNamespace) { gh variable set COMMUNITY_NAMESPACE --body "$cNamespace" 2>$null }
 

@@ -3,7 +3,7 @@
 function Publish-ModPackage {
     [CmdletBinding()]
     param(
-        [ValidateSet("All", "Thunderstore", "Hexium", "Nexus")]
+        [ValidateSet("All", "Thunderstore", "Nexus")]
         [string]$Target = "All",
 
         [string]$PackagePath,
@@ -14,7 +14,6 @@ function Publish-ModPackage {
 
         # Pass-through overrides
         [string]$ThunderstoreToken,
-        [string]$HexiumToken,
         [string]$NexusApiKey,
         [string]$NexusModId,
         [string]$NexusFileId,
@@ -68,18 +67,6 @@ function Publish-ModPackage {
         }
     }
 
-    # Hexium
-    if ($Target -in @("All", "Hexium")) {
-        Write-Host "`n----------------------------------------" -ForegroundColor DarkGray
-        Write-Host ">> Publishing to Hexium..." -ForegroundColor Cyan
-        try {
-            Publish-HexiumPackage -PackagePath $PackagePath -Token $HexiumToken -Community ($Community ?? "valheim") -Namespace $Namespace -ProjectDir $ProjectDir -DryRun:$DryRun
-            $results["Hexium"] = "Success"
-        } catch {
-            $results["Hexium"] = "Failed: $($_.Exception.Message)"
-            Write-Warning "Hexium submission failed: $($_.Exception.Message)"
-        }
-    }
 
     # Nexus Mods
     if ($Target -in @("All", "Nexus")) {

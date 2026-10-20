@@ -20,6 +20,5 @@ Export-ModuleMember -Function @(
     'Invoke-ModRelease',
     'Publish-ModPackage',
     'Publish-ThunderstorePackage',
-    'Publish-HexiumPackage',
     'Publish-NexusPackage'
 )

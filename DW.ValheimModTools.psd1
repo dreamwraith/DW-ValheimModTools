@@ -5,14 +5,13 @@
     Author               = 'DreamWraith'
     CompanyName          = 'DreamWraith'
     Copyright            = '(c) 2026 DreamWraith. All rights reserved.'
-    Description          = 'Modern PowerShell 7 automation toolkit for packaging, releasing, and publishing game mods (Valheim, BepInEx) to Thunderstore, Hexium, Nexus Mods, and GitHub Releases.'
+    Description          = 'Modern PowerShell 7 automation toolkit for packaging, releasing, and publishing game mods (Valheim, BepInEx) to Thunderstore, Nexus Mods, and GitHub Releases.'
     PowerShellVersion    = '7.0'
     FunctionsToExport    = @(
         'New-ModPackage',
         'Invoke-ModRelease',
         'Publish-ModPackage',
         'Publish-ThunderstorePackage',
-        'Publish-HexiumPackage',
         'Publish-NexusPackage'
     )
     CmdletsToExport      = @()
@@ -20,7 +19,7 @@
     AliasesToExport      = @()
     PrivateData          = @{
         PSData = @{
-            Tags = @('Valheim', 'BepInEx', 'Modding', 'Thunderstore', 'Hexium', 'NexusMods', 'Automation')
+            Tags = @('Valheim', 'BepInEx', 'Modding', 'Thunderstore', 'NexusMods', 'Automation')
             ProjectUri = 'https://github.com/DreamWraith/DW-ValheimModTools'
         }
     }

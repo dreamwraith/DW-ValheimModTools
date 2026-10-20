@@ -97,17 +97,76 @@ function New-ModPackage {
     $buildOutDir = $mainDll.DirectoryName
     Write-Host "Staging build artifacts from $buildOutDir..." -ForegroundColor Cyan
 
-    $ignoredDlls = @("0Harmony.dll", "assembly_valheim.dll", "assembly_guiutils.dll", "UnityEngine.dll")
-    Get-ChildItem -Path $buildOutDir -File | Where-Object {
-        $ext = $_.Extension.ToLower()
-        ($ext -eq ".dll" -and $_.Name -notmatch "^(System\.|Microsoft\.)" -and $_.Name -notin $ignoredDlls)
+    $forbiddenDllPatterns = @(
+        '^0Harmony(\.|$)',
+        '^HarmonyXInterop(\.|$)',
+        '^Jotunn(Lib)?(\.|$)',
+        '^BepInEx(\.|$)',
+        '^UnityEngine(\.|$)',
+        '^Unity\.',
+        '^assembly_',
+        '^gui_framework',
+        '^SoftReferenceableAssets',
+        '^Splatform',
+        '^PlayFab',
+        '^Mono(\.|$)',
+        '^MonoMod(\.|$)',
+        '^System\.',
+        '^Microsoft\.'
+    )
+
+    Get-ChildItem -Path $buildOutDir -File -Filter "*.dll" | Where-Object {
+        $dllName = $_.Name
+        $isForbidden = $false
+        foreach ($pattern in $forbiddenDllPatterns) {
+            if ($dllName -match $pattern) {
+                $isForbidden = $true
+                break
+            }
+        }
+        (-not $isForbidden)
     } | Copy-Item -Destination $stagingDir -Force
 
     # 5. Copy Package Assets
     foreach ($asset in @("icon.png", "README.md", "manifest.json", "CHANGELOG.md")) {
         $src = Join-Path $ProjectDir $asset
         if (Test-Path $src) {
-            Copy-Item $src -Destination $stagingDir -Force
+            if ($asset -eq "README.md") {
+                # Resolve website URL for relative link expansion (matching Convert-MarkdownToBBCode)
+                $webUrl = (Get-ModProjectProperty -ProjectDir $ProjectDir -Property "PackageProjectUrl")
+                if (-not $webUrl) {
+                    $webUrl = (Get-ModProjectProperty -ProjectDir $ProjectDir -Property "RepositoryUrl")
+                }
+                if (-not $webUrl) {
+                    $manifestPath = Join-Path $ProjectDir "manifest.json"
+                    if (Test-Path $manifestPath) {
+                        try {
+                            $m = Get-Content $manifestPath -Raw | ConvertFrom-Json
+                            $webUrl = $m.website_url
+                        } catch { }
+                    }
+                }
+                if ($webUrl -and $webUrl -match '^https?://github\.com/[^/]+/[^/]+') {
+                    $repoUrl = $Matches[0].TrimEnd('/')
+                    $readmeContent = [System.IO.File]::ReadAllText($src)
+                    # Expand relative markdown links and badge links: [text](target) / [![alt](img)](target) -> absolute GitHub URLs
+                    $linkPattern = '\[((?:!\[[^\]]*\]\([^)]+\)|[^\]])+)\]\((?!https?://|mailto:|#)([^)\s]+)\)'
+                    $readmeContent = [regex]::Replace($readmeContent, $linkPattern, {
+                        param($m)
+                        $txt = $m.Groups[1].Value
+                        $target = $m.Groups[2].Value
+                        if ($target -match '^README\.md(#.+)$') {
+                            return "[$txt]($repoUrl$($Matches[1]))"
+                        }
+                        return "[$txt]($repoUrl/blob/main/$target)"
+                    })
+                    [System.IO.File]::WriteAllText((Join-Path $stagingDir "README.md"), $readmeContent, [System.Text.UTF8Encoding]::new($false))
+                } else {
+                    Copy-Item $src -Destination $stagingDir -Force
+                }
+            } else {
+                Copy-Item $src -Destination $stagingDir -Force
+            }
         } else {
             Write-Warning "Package asset '$asset' not found in project root."
         }
