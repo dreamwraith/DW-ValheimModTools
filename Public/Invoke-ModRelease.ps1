@@ -33,27 +33,31 @@ function Invoke-ModRelease {
         exit 1
     }
 
-    # Step 1: Version Synchronization (if bumping version, bump BEFORE compiling so DLL has updated metadata)
-    if ($Bump -or $SetVersion) {
-        Write-Host "[Step 1/5] Updating project version ($($Bump ? "Bump $Bump" : "Set $SetVersion"))..." -ForegroundColor Cyan
-        $bumpPkg = New-ModPackage -Bump $Bump -SetVersion $SetVersion -Configuration $Configuration -ProjectDir $ProjectDir
-        $ver = $bumpPkg.Version
-    } else {
-        $ctx = Get-ModProjectContext -ProjectDir $ProjectDir
-        $ver = $ctx.Version
+    $ctx = Get-ModProjectContext -ProjectDir $ProjectDir
+    if (-not $ctx) { exit 1 }
+
+    # Step 1: Version Synchronization (bump BEFORE compiling so DLL has updated metadata)
+    $ver = Resolve-ModVersion -CurrentVersion $ctx.Version -Bump $Bump -SetVersion $SetVersion
+    $packagedVersion = $ver
+    if ($ver -eq $ctx.Version) {
         Write-Host "[Step 1/5] Using project version v$ver..." -ForegroundColor Cyan
+    } elseif ($DryRun) {
+        Write-Host "[Step 1/5] [DryRun] Would update project version: $($ctx.Version) -> $ver" -ForegroundColor Yellow
+        $packagedVersion = $ctx.Version
+    } else {
+        Write-Host "[Step 1/5] Updating project version..." -ForegroundColor Cyan
+        Set-ModProjectVersion -Context $ctx -Version $ver
     }
 
     $tag = "v$ver"
 
     # Step 2: Compile Solution
     Write-Host "`n[Step 2/5] Compiling solution in $Configuration mode for $tag..." -ForegroundColor Cyan
-    dotnet build (Join-Path $ProjectDir "") -c $Configuration
-    if ($LASTEXITCODE -ne 0) { Write-Error "Build failed with exit code $LASTEXITCODE."; exit $LASTEXITCODE }
+    Invoke-ModBuild -ProjectDir $ProjectDir -Configuration $Configuration
 
     # Step 3: Package Mod Distribution Archive
     Write-Host "`n[Step 3/5] Packaging distribution archive..." -ForegroundColor Cyan
-    $pkg = New-ModPackage -Configuration $Configuration -ProjectDir $ProjectDir
+    $pkg = New-ModArchive -Context $ctx -Version $packagedVersion -Configuration $Configuration
 
     # Step 4: Synchronize GitHub Secrets and Variables
     Write-Host "`n[Step 4/5] Synchronizing repository secrets & variables..." -ForegroundColor Cyan
@@ -61,9 +65,15 @@ function Invoke-ModRelease {
     $nKey   = $env:NEXUSMODS_API_KEY ?? $env:NEXUS_API_KEY ?? [Environment]::GetEnvironmentVariable("NEXUSMODS_API_KEY", "User")
     $cNamespace = $env:COMMUNITY_NAMESPACE ?? [Environment]::GetEnvironmentVariable("COMMUNITY_NAMESPACE", "User") ?? (Get-ModProjectProperty -ProjectDir $ProjectDir -Property "Authors")
 
-    if ($tToken) { gh secret set THUNDERSTORE_TOKEN --body "$tToken" 2>$null }
-    if ($nKey)   { gh secret set NEXUSMODS_API_KEY --body "$nKey" 2>$null }
-    if ($cNamespace) { gh variable set COMMUNITY_NAMESPACE --body "$cNamespace" 2>$null }
+    if ($DryRun) {
+        if ($tToken) { Write-Host "[DryRun] Would set secret THUNDERSTORE_TOKEN" -ForegroundColor Yellow }
+        if ($nKey)   { Write-Host "[DryRun] Would set secret NEXUSMODS_API_KEY" -ForegroundColor Yellow }
+        if ($cNamespace) { Write-Host "[DryRun] Would set variable COMMUNITY_NAMESPACE to '$cNamespace'" -ForegroundColor Yellow }
+    } else {
+        if ($tToken) { gh secret set THUNDERSTORE_TOKEN --body "$tToken" 2>$null }
+        if ($nKey)   { gh secret set NEXUSMODS_API_KEY --body "$nKey" 2>$null }
+        if ($cNamespace) { gh variable set COMMUNITY_NAMESPACE --body "$cNamespace" 2>$null }
+    }
 
     # Changelog notes
     $notes = Get-ModChangelogSection -ProjectDir $ProjectDir -Version $ver

@@ -32,15 +32,16 @@ function Publish-ModPackage {
 
     if (-not $NoBuild) {
         Write-Host "[Step 1/3] Building solution in $Configuration mode..." -ForegroundColor Cyan
-        dotnet build (Join-Path $ProjectDir "") -c $Configuration
-        if ($LASTEXITCODE -ne 0) { Write-Error "Build failed with exit code $LASTEXITCODE."; exit $LASTEXITCODE }
+        Invoke-ModBuild -ProjectDir $ProjectDir -Configuration $Configuration
     } else {
         Write-Host "[Step 1/3] Skipping build (-NoBuild specified)." -ForegroundColor Yellow
     }
 
     if (-not $PackagePath) {
         Write-Host "`n[Step 2/3] Resolving distribution package..." -ForegroundColor Cyan
-        $pkg = New-ModPackage -Configuration $Configuration -ProjectDir $ProjectDir
+        $ctx = Get-ModProjectContext -ProjectDir $ProjectDir
+        if (-not $ctx) { exit 1 }
+        $pkg = New-ModArchive -Context $ctx -Version $ctx.Version -Configuration $Configuration
         $PackagePath = $pkg.PackagePath
     } else {
         Write-Host "`n[Step 2/3] Using specified package: $PackagePath" -ForegroundColor Cyan

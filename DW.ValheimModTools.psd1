@@ -20,7 +20,7 @@
     PrivateData          = @{
         PSData = @{
             Tags = @('Valheim', 'BepInEx', 'Modding', 'Thunderstore', 'NexusMods', 'Automation')
-            ProjectUri = 'https://github.com/DreamWraith/DW-ValheimModTools'
+            ProjectUri = 'https://github.com/dreamwraith/DW-ValheimModTools'
         }
     }
 }
