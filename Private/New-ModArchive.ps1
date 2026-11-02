@@ -51,7 +51,7 @@ function New-ModArchive {
         }
         if ($webUrl -and $webUrl -match '^https?://github\.com/[^/]+/[^/]+') {
             $repoUrl = $Matches[0].TrimEnd('/')
-            $readmeContent = [System.IO.File]::ReadAllText($readmePath)
+            $readmeContent = [System.IO.File]::ReadAllText($readmePath, [System.Text.Encoding]::UTF8) -replace "\r\n?", "`n"
             # Expand relative markdown links and badge links: [text](target) / [![alt](img)](target) -> absolute GitHub URLs
             $linkPattern = '\[((?:!\[[^\]]*\]\([^)]+\)|[^\]])+)\]\((?!https?://|mailto:|#)([^)\s]+)\)'
             $readmeContent = [regex]::Replace($readmeContent, $linkPattern, {
@@ -80,9 +80,9 @@ function New-ModArchive {
     Write-Host "Created distribution package: $distZipPath" -ForegroundColor Green
 
     # 3. Extract Release Notes
-    $changelogNotes = Get-ModChangelogSection -ProjectDir $ProjectDir -Version $Version
+    $changelogNotes = (Get-ModChangelogSection -ProjectDir $ProjectDir -Version $Version) -replace "\r\n?", "`n"
     $notesOut = Join-Path $publishDir "release_notes.md"
-    Set-Content -Path $notesOut -Value $changelogNotes -Encoding utf8
+    [System.IO.File]::WriteAllText($notesOut, $changelogNotes.TrimEnd("`n") + "`n", [System.Text.UTF8Encoding]::new($false))
 
     return [PSCustomObject]@{
         Name             = $Context.Name
